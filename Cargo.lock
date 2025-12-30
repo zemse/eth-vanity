@@ -702,9 +702,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "clap",
- "hex",
  "k256",
- "rand 0.8.5",
+ "rand_core 0.6.4",
  "rayon",
  "serde",
  "serde_json",

@@ -1,7 +1,7 @@
-use alloy_primitives::{keccak256, Address, B256};
+use alloy_primitives::{hex, keccak256, Address, B256};
 use clap::{Parser, Subcommand};
 use k256::ecdsa::SigningKey;
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 use rayon::prelude::*;
 use serde::Deserialize;
 use std::fs;
@@ -560,26 +560,25 @@ fn mine_create2_salt(pattern: &Pattern, deployer: &Address, init_code_hash: &B25
 
     let result: Option<Create2MiningResult> = (0..num_threads)
         .into_par_iter()
-        .find_map_any(|_| {
-            let mut local_attempts = 0u64;
-            let mut rng = rand::thread_rng();
+        .find_map_any(|thread_idx| {
+            let mut counter = 0u64;
 
             loop {
                 if found.load(Ordering::Relaxed) {
                     return None;
                 }
 
-                // Generate random salt
+                // Generate salt from thread index and counter (faster than random)
                 let mut salt_bytes = [0u8; 32];
-                rand::RngCore::fill_bytes(&mut rng, &mut salt_bytes);
+                salt_bytes[0..8].copy_from_slice(&(thread_idx as u64).to_le_bytes());
+                salt_bytes[8..16].copy_from_slice(&counter.to_le_bytes());
                 let salt = B256::from(salt_bytes);
+                counter += 1;
 
                 let contract_address = calculate_create2_address(deployer, &salt, init_code_hash);
 
-                local_attempts += 1;
-
                 // Periodically update global counter
-                if local_attempts.is_multiple_of(10000) {
+                if counter.is_multiple_of(10000) {
                     let total = attempts.fetch_add(10000, Ordering::Relaxed) + 10000;
                     // Adaptive logging: every 1M for first 10M, every 10M until 100M, then every 100M
                     let should_log = if total <= 10_000_000 {
