@@ -1,6 +1,6 @@
 [package]
 name = "eth-vanity"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Fast Ethereum vanity address miner. Supports wallet addresses, CREATE, and CREATE2."
 license = "MIT"
