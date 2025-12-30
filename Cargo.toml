@@ -2,6 +2,11 @@
 name = "eth-vanity"
 version = "0.1.0"
 edition = "2021"
+description = "Fast Ethereum vanity address miner. Supports wallet addresses, CREATE, and CREATE2."
+license = "MIT"
+repository = "https://github.com/zemse/eth-vanity"
+keywords = ["ethereum", "vanity", "address", "create2", "crypto"]
+categories = ["cryptography", "command-line-utilities"]
 
 [dependencies]
 alloy-primitives = "0.8"
