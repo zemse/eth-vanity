@@ -394,20 +394,31 @@ fn calculate_create2_address(deployer: &Address, salt: &B256, init_code_hash: &B
     Address::from_slice(&hash[12..])
 }
 
-/// Load and parse init code from a Foundry artifact JSON file
+/// Load and parse init code from a file
+/// Supports:
+/// - Foundry artifact JSON files (with bytecode.object field)
+/// - Raw hex bytecode files (with or without 0x prefix)
 fn load_init_code(path: &PathBuf) -> Result<Vec<u8>, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let artifact: FoundryArtifact = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+    // First try to parse as Foundry artifact JSON
+    if let Ok(artifact) = serde_json::from_str::<FoundryArtifact>(&content) {
+        let bytecode_str = artifact.bytecode.object
+            .strip_prefix("0x")
+            .unwrap_or(&artifact.bytecode.object);
 
-    let bytecode_str = artifact.bytecode.object
-        .strip_prefix("0x")
-        .unwrap_or(&artifact.bytecode.object);
+        return hex::decode(bytecode_str)
+            .map_err(|e| format!("Failed to decode bytecode hex from artifact: {}", e));
+    }
+
+    // Otherwise, treat as raw hex bytecode
+    let bytecode_str = content.trim();
+    let bytecode_str = bytecode_str.strip_prefix("0x").unwrap_or(bytecode_str);
+    let bytecode_str = bytecode_str.strip_prefix("0X").unwrap_or(bytecode_str);
 
     hex::decode(bytecode_str)
-        .map_err(|e| format!("Failed to decode bytecode hex: {}", e))
+        .map_err(|e| format!("Failed to decode raw hex bytecode: {}", e))
 }
 
 /// Result of successful mining for wallet address
@@ -664,7 +675,7 @@ enum Commands {
 
     /// Mine a salt for CREATE2 deployment via deterministic deployment proxy
     Create2 {
-        /// Path to Foundry artifact JSON file containing bytecode
+        /// Path to bytecode file (Foundry artifact JSON or raw hex with/without 0x prefix)
         artifact: PathBuf,
 
         /// Pattern to match (e.g., "0xabc_4...123")
